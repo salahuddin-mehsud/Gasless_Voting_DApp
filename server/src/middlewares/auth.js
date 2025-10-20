@@ -54,6 +54,6 @@ export const optionalAuth = async (req, res, next) => {
     
     next();
   } catch (error) {
-    next(); // Continue without user for optional auth
+    next(); 
   }
 };

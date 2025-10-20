@@ -103,19 +103,15 @@ contract GaslessVoting {
         require(!hasVoted[_pollId][_voter], "Already voted");
         require(nonces[_voter] == _nonce, "Wrong nonce");
 
-        // Create the message hash that was signed
         bytes32 messageHash = keccak256(
             abi.encodePacked(_pollId, _option, _voter, _nonce, address(this))
         );
         
-        // Convert to Ethereum signed message hash
         bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
         
-        // Recover the signer address
         address signer = ethSignedMessageHash.recover(_signature);
         require(signer == _voter, "Invalid signature");
 
-        // Record vote - _voter is the actual user who signed
         poll.votes[_option]++;
         poll.totalVotes++;
         hasVoted[_pollId][_voter] = true;

@@ -30,6 +30,6 @@ const voteSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Prevent duplicate votes
+
 voteSchema.index({ poll: 1, voterAddress: 1 }, { unique: true });
 export default mongoose.model('Vote', voteSchema);

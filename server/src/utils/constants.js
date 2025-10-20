@@ -7,8 +7,8 @@ export const POLL_STATUS = {
 export const VOTE_LIMITS = {
   MAX_OPTIONS: 10,
   MIN_OPTIONS: 2,
-  MAX_DURATION: 30 * 24 * 60, // 30 days in minutes
-  MIN_DURATION: 1 // 1 minute
+  MAX_DURATION: 30 * 24 * 60, 
+  MIN_DURATION: 1 
 };
 
 export const CACHE_KEYS = {

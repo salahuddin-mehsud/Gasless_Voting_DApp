@@ -66,7 +66,6 @@ export const getPoll = async (req, res, next) => {
       });
     }
 
-    // Auto-deactivate poll if end time has passed
     const now = new Date();
     if (poll.isActive && now > poll.endTime) {
       poll.isActive = false;
@@ -170,7 +169,6 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // Auto-deactivate poll if end time has passed
     const now = new Date();
     if (poll.isActive && now > poll.endTime) {
       poll.isActive = false;
@@ -197,7 +195,6 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // Check if this USER (database user) has already voted
     const existingVote = await Vote.findOne({ 
       poll: id, 
       user: userId 
@@ -211,11 +208,9 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // 🔥 GASLESS VOTING: Use the user's wallet address from database
     const userWalletAddress = req.user.walletAddress;
     console.log('🔍 Using user wallet address from database:', userWalletAddress);
 
-    // Verify nonce matches current nonce on blockchain for THIS USER
     console.log('🔍 Verifying nonce on blockchain...');
     const currentNonce = await getNonce(userWalletAddress);
     console.log('Current nonce on chain:', currentNonce, 'Provided nonce:', nonce);
@@ -227,18 +222,18 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // Vote on blockchain with signature - GASLESS (server pays gas)
+    
     console.log('🔄 Executing GASLESS on-chain vote...');
     const blockchainResult = await voteOnChain(
       poll.contractPollId, 
       optionIndex, 
-      userWalletAddress, // User's wallet address as voter
+      userWalletAddress, 
       nonce,
       signature
     );
 
     if (!blockchainResult.success) {
-      console.error('❌ Blockchain vote failed:', blockchainResult.error);
+      console.error(' Blockchain vote failed:', blockchainResult.error);
       return res.status(400).json({
         success: false,
         message: `On-chain voting failed: ${blockchainResult.error}`
@@ -247,17 +242,15 @@ export const vote = async (req, res, next) => {
 
     console.log('✅ GASLESS vote successful - transaction:', blockchainResult.transactionHash);
 
-    // Update poll in database ONLY after successful blockchain vote
     poll.options[optionIndex].votes += 1;
     poll.totalVotes += 1;
     await poll.save();
 
-    // Record vote with transaction hash
     await Vote.create({
   poll: id,
   user: userId,
   optionIndex,
-  voterAddress: userWalletAddress,           // <-- add this
+  voterAddress: userWalletAddress,          
   transactionHash: blockchainResult.transactionHash
 });
 

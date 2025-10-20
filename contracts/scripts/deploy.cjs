@@ -11,7 +11,6 @@ async function main() {
   const address = await gaslessVoting.getAddress();
   console.log("GaslessVoting deployed to:", address);
   
-  // Verify contract (if on supported network)
   if (process.env.ETHERSCAN_API_KEY) {
     console.log("Waiting for block confirmations...");
     await gaslessVoting.deploymentTransaction().wait(5);

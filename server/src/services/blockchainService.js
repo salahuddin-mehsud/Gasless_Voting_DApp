@@ -5,13 +5,10 @@ let contractInstance = null;
 export const getContract = () => {
   if (contractInstance) return contractInstance;
 
-  // ✅ create provider (use Alchemy or Infura URL)
   const provider = new JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
-  // ✅ connect relayer wallet
   const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
 
-  // ✅ contract ABI
   const contractABI = [
     "function createPoll(string _question, string[] _options, uint256 _durationInMinutes) external returns (uint256)",
     "function vote(uint256 _pollId, uint256 _option) external",
@@ -30,7 +27,6 @@ export const getContract = () => {
     "event PollEnded(uint256 pollId)"
   ];
 
-  // ✅ create contract instance
   contractInstance = new Contract(
     process.env.CONTRACT_ADDRESS,
     contractABI,
@@ -55,7 +51,6 @@ export const createPollOnChain = async (question, options, durationInMinutes) =>
           break;
         }
       } catch (e) {
-        // ignore invalid logs
       }
     }
 
@@ -86,7 +81,7 @@ export const voteOnChain = async (pollId, optionIndex, voterAddress, nonce, sign
       nonce,
       signature,
       {
-        gasLimit: 500000n // ethers v6 uses bigint suffix 'n'
+        gasLimit: 500000n 
       }
     );
 
@@ -99,7 +94,7 @@ export const voteOnChain = async (pollId, optionIndex, voterAddress, nonce, sign
       transactionHash: receipt.hash
     };
   } catch (error) {
-    console.error("❌ Error voting on chain:", error);
+    console.error("Error voting on chain:", error);
 
     let errorMessage = error.message || "Blockchain transaction failed";
     if (error.reason) {

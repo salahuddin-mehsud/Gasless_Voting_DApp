@@ -47,7 +47,6 @@ const pollSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better query performance
 pollSchema.index({ creator: 1, createdAt: -1 });
 pollSchema.index({ isActive: 1, endTime: 1 });
 

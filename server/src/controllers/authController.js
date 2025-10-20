@@ -7,7 +7,6 @@ export const register = async (req, res, next) => {
   try {
     const { email, password, username, walletAddress } = req.body;
 
-    // Validation
     if (!validateEmail(email)) {
       return res.status(400).json({
         success: false,
@@ -36,7 +35,6 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({
       $or: [
         { email: email.toLowerCase() },
@@ -56,7 +54,6 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // Create user
     const user = await User.create({
       email: email.toLowerCase(),
       password,
@@ -90,7 +87,6 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // Find user and include password for comparison
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
     if (!user || !(await user.comparePassword(password))) {
@@ -113,7 +109,7 @@ export const login = async (req, res, next) => {
       success: true,
       message: 'Login successful',
       data: {
-        user: await User.findById(user._id), // Get user without password
+        user: await User.findById(user._id),
         token
       }
     });

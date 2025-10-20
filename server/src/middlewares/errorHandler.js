@@ -4,27 +4,23 @@ const errorHandler = (err, req, res, next) => {
 
   console.error('Error:', err);
 
-  // Mongoose bad ObjectId
   if (err.name === 'CastError') {
     const message = 'Resource not found';
     error = { message, statusCode: 404 };
   }
 
-  // Mongoose duplicate key
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];
     const message = `${field} already exists`;
     error = { message, statusCode: 400 };
   }
 
-  // Mongoose validation error
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors).map(val => val.message);
     const message = messages.join(', ');
     error = { message, statusCode: 400 };
   }
 
-  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     const message = 'Invalid token';
     error = { message, statusCode: 401 };
