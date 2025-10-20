@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.jsx';
-import { Vote, Calendar, CheckCircle } from 'lucide-react';
+import { Vote, Calendar, CheckCircle, ExternalLink } from 'lucide-react';
 import Navigation from '../components/layout/Navigation.jsx';
 import { formatDate } from '../utils/helpers.js';
 import Loader from '../components/ui/Loader.jsx';
@@ -43,6 +43,11 @@ const MyVotes = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Check if transaction is real (starts with 0x) or off-chain
+  const isRealTransaction = (txHash) => {
+    return txHash && txHash.startsWith('0x');
   };
 
   if (!user) {
@@ -134,9 +139,13 @@ const MyVotes = () => {
                           <Calendar className="h-4 w-4" />
                           <span>Voted on {formatDate(vote.votedAt)}</span>
                         </div>
-                        <div className="flex items-center space-x-1 text-green-600">
+                        <div className={`flex items-center space-x-1 ${
+                          isRealTransaction(vote.transactionHash) ? 'text-green-600' : 'text-blue-600'
+                        }`}>
                           <CheckCircle className="h-4 w-4" />
-                          <span>Vote recorded</span>
+                          <span>
+                            {isRealTransaction(vote.transactionHash) ? 'On-chain vote' : 'Off-chain vote'}
+                          </span>
                         </div>
                       </div>
 
@@ -159,7 +168,7 @@ const MyVotes = () => {
                           </a>
                         </Button>
                       )}
-                      {vote.transactionHash && (
+                      {isRealTransaction(vote.transactionHash) ? (
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -167,8 +176,13 @@ const MyVotes = () => {
                             window.open(`https://sepolia.etherscan.io/tx/${vote.transactionHash}`, '_blank');
                           }}
                         >
+                          <ExternalLink className="h-4 w-4 mr-1" />
                           View on Explorer
                         </Button>
+                      ) : (
+                        <div className="text-xs text-gray-500 text-center p-2 bg-gray-100 rounded">
+                          Off-chain vote
+                        </div>
                       )}
                     </div>
                   </div>
@@ -177,7 +191,8 @@ const MyVotes = () => {
                   {vote.transactionHash && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <p className="text-xs text-gray-500">
-                        Transaction: <span className="font-mono">{vote.transactionHash}</span>
+                        {isRealTransaction(vote.transactionHash) ? 'Transaction: ' : 'Reference: '}
+                        <span className="font-mono">{vote.transactionHash}</span>
                       </p>
                     </div>
                   )}

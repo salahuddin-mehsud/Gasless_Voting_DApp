@@ -1,6 +1,7 @@
+import { ethers } from 'ethers';
 import Poll from '../models/Poll.js';
 import Vote from '../models/Vote.js';
-import { createPollOnChain, voteOnChain, getPollFromChain } from '../services/blockchainService.js';
+import { createPollOnChain, voteOnChain, getPollFromChain, getNonce } from '../services/blockchainService.js';
 import { formatPollResponse, calculateVotePercentages } from '../utils/helpers.js';
 import mongoose from 'mongoose';
 
@@ -9,7 +10,6 @@ export const createPoll = async (req, res, next) => {
     const { question, options, durationInMinutes } = req.body;
     const userId = req.user._id;
 
-    // Create poll on blockchain
     const blockchainResult = await createPollOnChain(question, options, durationInMinutes);
     
     if (!blockchainResult.success) {
@@ -19,11 +19,9 @@ export const createPoll = async (req, res, next) => {
       });
     }
 
-    // Calculate end time
     const endTime = new Date();
     endTime.setMinutes(endTime.getMinutes() + parseInt(durationInMinutes));
 
-    // Save poll to database
     const poll = await Poll.create({
       question: question.trim(),
       options: options.map(option => ({ text: option.trim() })),
@@ -52,7 +50,6 @@ export const getPoll = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Validate if id is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -69,7 +66,14 @@ export const getPoll = async (req, res, next) => {
       });
     }
 
-    // Check if user has voted
+    // Auto-deactivate poll if end time has passed
+    const now = new Date();
+    if (poll.isActive && now > poll.endTime) {
+      poll.isActive = false;
+      await poll.save();
+      console.log(`🔄 Auto-deactivated poll ${id} - end time passed`);
+    }
+
     let userVote = null;
     if (req.user) {
       const vote = await Vote.findOne({ 
@@ -79,7 +83,6 @@ export const getPoll = async (req, res, next) => {
       userVote = vote ? vote.optionIndex : null;
     }
 
-    // Get results from blockchain for verification
     const blockchainPoll = await getPollFromChain(poll.contractPollId);
     
     const response = formatPollResponse(poll);
@@ -97,7 +100,6 @@ export const getPoll = async (req, res, next) => {
     next(error);
   }
 };
-
 
 export const getPolls = async (req, res, next) => {
   try {
@@ -141,15 +143,17 @@ export const getPolls = async (req, res, next) => {
   }
 };
 
-
-
 export const vote = async (req, res, next) => {
   try {
+    console.log('🎯 Vote endpoint hit!');
+    console.log('Request params:', req.params);
+    console.log('Request body:', req.body);
+    console.log('User:', req.user ? req.user._id : 'No user');
+
     const { id } = req.params;
-    const { optionIndex } = req.body;
+    const { optionIndex, signature, nonce } = req.body;
     const userId = req.user._id;
 
-    // Validate if id is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -166,10 +170,12 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // Check if poll is active
-    if (!poll.isActive || new Date() > poll.endTime) {
+    // Auto-deactivate poll if end time has passed
+    const now = new Date();
+    if (poll.isActive && now > poll.endTime) {
       poll.isActive = false;
       await poll.save();
+      console.log(`🔄 Auto-deactivated poll ${id} during vote attempt`);
       
       return res.status(400).json({
         success: false,
@@ -177,7 +183,13 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // Check if option is valid
+    if (!poll.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Poll has ended'
+      });
+    }
+
     if (optionIndex < 0 || optionIndex >= poll.options.length) {
       return res.status(400).json({
         success: false,
@@ -185,57 +197,99 @@ export const vote = async (req, res, next) => {
       });
     }
 
-    // Check if user has already voted
+    // Check if this USER (database user) has already voted
     const existingVote = await Vote.findOne({ 
       poll: id, 
       user: userId 
     });
 
     if (existingVote) {
+      console.log(`❌ Database user ${userId} already voted on poll ${id}`);
       return res.status(400).json({
         success: false,
         message: 'You have already voted on this poll'
       });
     }
 
-    // Vote on blockchain
-    const blockchainResult = await voteOnChain(
-      poll.contractPollId, 
-      optionIndex, 
-      req.user.walletAddress
-    );
+    // 🔥 GASLESS VOTING: Use the user's wallet address from database
+    const userWalletAddress = req.user.walletAddress;
+    console.log('🔍 Using user wallet address from database:', userWalletAddress);
 
-    if (!blockchainResult.success) {
+    // Verify nonce matches current nonce on blockchain for THIS USER
+    console.log('🔍 Verifying nonce on blockchain...');
+    const currentNonce = await getNonce(userWalletAddress);
+    console.log('Current nonce on chain:', currentNonce, 'Provided nonce:', nonce);
+    
+    if (parseInt(currentNonce) !== parseInt(nonce)) {
       return res.status(400).json({
         success: false,
-        message: `Voting failed: ${blockchainResult.error}`
+        message: `Invalid nonce. Expected: ${currentNonce}, Got: ${nonce}`
       });
     }
 
-    // Update poll in database
+    // Vote on blockchain with signature - GASLESS (server pays gas)
+    console.log('🔄 Executing GASLESS on-chain vote...');
+    const blockchainResult = await voteOnChain(
+      poll.contractPollId, 
+      optionIndex, 
+      userWalletAddress, // User's wallet address as voter
+      nonce,
+      signature
+    );
+
+    if (!blockchainResult.success) {
+      console.error('❌ Blockchain vote failed:', blockchainResult.error);
+      return res.status(400).json({
+        success: false,
+        message: `On-chain voting failed: ${blockchainResult.error}`
+      });
+    }
+
+    console.log('✅ GASLESS vote successful - transaction:', blockchainResult.transactionHash);
+
+    // Update poll in database ONLY after successful blockchain vote
     poll.options[optionIndex].votes += 1;
     poll.totalVotes += 1;
     await poll.save();
 
-    // Record vote
+    // Record vote with transaction hash
     await Vote.create({
-      poll: id,
-      user: userId,
-      optionIndex,
-      transactionHash: blockchainResult.transactionHash
-    });
+  poll: id,
+  user: userId,
+  optionIndex,
+  voterAddress: userWalletAddress,           // <-- add this
+  transactionHash: blockchainResult.transactionHash
+});
 
     const updatedPoll = await Poll.findById(id).populate('creator', 'username walletAddress');
     
+    console.log('✅ Vote recorded successfully - GASLESS');
+    
     res.json({
       success: true,
-      message: 'Vote recorded successfully',
+      message: 'Vote recorded successfully (gasless)',
       data: {
         poll: formatPollResponse(updatedPoll),
         transactionHash: blockchainResult.transactionHash
       }
     });
   } catch (error) {
+    console.error('❌ Backend vote error:', error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: `Validation error: ${error.message}`
+      });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already voted on this poll'
+      });
+    }
+    
     next(error);
   }
 };

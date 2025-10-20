@@ -9,6 +9,8 @@ const Navigation = ({ className }) => {
     { name: 'Active Polls', href: '/polls', current: location.pathname === '/polls' },
     { name: 'My Polls', href: '/dashboard', current: location.pathname === '/dashboard' },
     { name: 'My Votes', href: '/votes', current: location.pathname === '/votes' }, // ADD THIS TAB
+    { name: 'On-Chain', href: '/onchain', current: location.pathname === '/onchain' }, // ADD THIS TAB
+    
   ];
 
   return (

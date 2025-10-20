@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 contract GaslessVoting {
+    using ECDSA for bytes32;
+    
     struct Poll {
         string question;
         string[] options;
@@ -15,6 +19,7 @@ contract GaslessVoting {
     mapping(uint256 => Poll) public polls;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
     mapping(address => uint256[]) public userPolls;
+    mapping(address => uint256) public nonces;
     
     uint256 public pollCount;
     address public owner;
@@ -77,7 +82,47 @@ contract GaslessVoting {
 
         emit Voted(_pollId, msg.sender, _option);
 
-        // Auto-end poll if duration passed (safety check)
+        if (block.timestamp > poll.endTime) {
+            poll.isActive = false;
+            emit PollEnded(_pollId);
+        }
+    }
+
+    function voteWithSig(
+        uint256 _pollId,
+        uint256 _option,
+        address _voter,
+        uint256 _nonce,
+        bytes calldata _signature
+    ) external validPoll(_pollId) {
+        Poll storage poll = polls[_pollId];
+        
+        require(poll.isActive, "Poll is not active");
+        require(block.timestamp <= poll.endTime, "Poll has ended");
+        require(_option < poll.options.length, "Invalid option");
+        require(!hasVoted[_pollId][_voter], "Already voted");
+        require(nonces[_voter] == _nonce, "Wrong nonce");
+
+        // Create the message hash that was signed
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(_pollId, _option, _voter, _nonce, address(this))
+        );
+        
+        // Convert to Ethereum signed message hash
+        bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
+        
+        // Recover the signer address
+        address signer = ethSignedMessageHash.recover(_signature);
+        require(signer == _voter, "Invalid signature");
+
+        // Record vote - _voter is the actual user who signed
+        poll.votes[_option]++;
+        poll.totalVotes++;
+        hasVoted[_pollId][_voter] = true;
+        nonces[_voter]++;
+
+        emit Voted(_pollId, _voter, _option);
+
         if (block.timestamp > poll.endTime) {
             poll.isActive = false;
             emit PollEnded(_pollId);

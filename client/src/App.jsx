@@ -11,6 +11,7 @@ import ResultsPage from './pages/ResultsPage.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import MyVotes from './pages/MyVotes.jsx'; // ADD THIS IMPORT
+import OnChain from './pages/OnChain.jsx';
 
 function App() {
   return (
@@ -27,7 +28,8 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/create" element={<CreatePollPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/votes" element={<MyVotes />} /> {/* ADD THIS ROUTE */}
+                <Route path="/votes" element={<MyVotes />} /> 
+                <Route path="/onchain" element={<OnChain />} /> 
                 <Route path="/poll/:id" element={<ResultsPage />} />
               </Routes>
             </main>

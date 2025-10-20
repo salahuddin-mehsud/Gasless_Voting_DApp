@@ -1,4 +1,4 @@
-export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xe1D249147566A317E8865324964869AeA94226Ad";
+export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0x3cA95aa9ed4c26201021346cB9CD78f20a6A12Ea";
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 export const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY;
 

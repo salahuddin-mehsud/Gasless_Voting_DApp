@@ -18,8 +18,9 @@
     "@tailwindcss/vite": "^4.1.14",
     "@walletconnect/modal": "^2.7.0",
     "axios": "^1.12.2",
+    "buffer": "^6.0.3",
     "clsx": "^2.1.1",
-    "ethers": "^6.15.0",
+    "ethers": "^5.7.2",
     "lucide-react": "^0.544.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -29,6 +30,7 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.14",
     "viem": "^2.37.12",
+    "vite-plugin-node-polyfills": "^0.24.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {

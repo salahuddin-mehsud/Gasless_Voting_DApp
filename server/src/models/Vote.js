@@ -16,6 +16,9 @@ const voteSchema = new mongoose.Schema({
     required: true
   },
   transactionHash: {
+    type: String
+  },
+  voterAddress: {  
     type: String,
     required: true
   },
@@ -28,6 +31,5 @@ const voteSchema = new mongoose.Schema({
 });
 
 // Prevent duplicate votes
-voteSchema.index({ poll: 1, user: 1 }, { unique: true });
-
+voteSchema.index({ poll: 1, voterAddress: 1 }, { unique: true });
 export default mongoose.model('Vote', voteSchema);

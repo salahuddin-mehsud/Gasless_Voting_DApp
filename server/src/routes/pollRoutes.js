@@ -15,6 +15,6 @@ router.post('/', authenticate, validatePollCreation, createPoll);
 router.get('/', optionalAuth, getPolls);
 router.get('/user', authenticate, getUserPolls);
 router.get('/:id', optionalAuth, getPoll);
-router.post('/:id/vote', authenticate, validateVote, vote);
+router.post('/:id/vote', authenticate, validateVote, vote); 
 
 export default router;

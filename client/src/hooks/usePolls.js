@@ -43,7 +43,6 @@ export const usePolls = (status = 'active', page = 1, limit = 10) => {
     } catch (err) {
       console.error('Error fetching polls:', err);
       setError(err.message);
-      // Don't clear polls on error, keep showing existing data
     } finally {
       setLoading(false);
     }
@@ -67,7 +66,7 @@ export const usePolls = (status = 'active', page = 1, limit = 10) => {
       const data = await response.json();
 
       if (data.success) {
-        await fetchPolls(); // Refresh the polls list
+        await fetchPolls();
         return { success: true, data: data.data };
       } else {
         return { success: false, message: data.message };
@@ -78,11 +77,26 @@ export const usePolls = (status = 'active', page = 1, limit = 10) => {
     }
   };
 
-  const vote = async (pollId, optionIndex) => {
+  const vote = async (pollId, optionIndex, signature, nonce) => {
     try {
       if (!pollId) {
         throw new Error('Poll ID is required');
       }
+
+      const voteData = {
+        optionIndex: optionIndex
+      };
+
+      // Add signature data if provided
+      if (signature && nonce !== undefined) {
+        voteData.signature = signature;
+        voteData.nonce = nonce;
+      }
+
+      console.log('📤 Sending vote request to backend...');
+      console.log('Request URL:', `${BACKEND_URL}/api/polls/${pollId}/vote`);
+      console.log('Request Data:', voteData);
+      console.log('Token available:', !!token);
 
       const response = await fetch(`${BACKEND_URL}/api/polls/${pollId}/vote`, {
         method: 'POST',
@@ -90,24 +104,35 @@ export const usePolls = (status = 'active', page = 1, limit = 10) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ optionIndex }),
+        body: JSON.stringify(voteData),
       });
 
+      console.log('📥 Received response, status:', response.status);
+
+      // Parse the response regardless of status
+      const data = await response.json();
+      console.log('Backend response data:', data);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Return the backend error message
+        return { 
+          success: false, 
+          message: data.message || `HTTP error! status: ${response.status}` 
+        };
       }
 
-      const data = await response.json();
-
       if (data.success) {
-        await fetchPolls(); // Refresh the polls list
+        await fetchPolls();
         return { success: true, data: data.data };
       } else {
         return { success: false, message: data.message };
       }
     } catch (error) {
-      console.error('Error voting:', error);
-      return { success: false, message: 'Network error occurred' };
+      console.error('❌ Error in vote function:', error);
+      return { 
+        success: false, 
+        message: 'Network error occurred: ' + error.message 
+      };
     }
   };
 

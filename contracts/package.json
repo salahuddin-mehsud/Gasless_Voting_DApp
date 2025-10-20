@@ -18,8 +18,8 @@
     "hardhat": "^2.26.3"
   },
   "dependencies": {
-    "@alchemy/aa-core": "^3.19.0",
-    "@openzeppelin/contracts": "^5.0.2",
+    "@alchemy/aa-core": "^3.6.1",
+    "@openzeppelin/contracts": "^4.9.6",
     "dotenv": "^17.2.3"
   }
 }
